@@ -50,3 +50,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### notes
 
 This is the complete code from the Nielson book unedited, ecxept for python 3
+
+
+minitest
