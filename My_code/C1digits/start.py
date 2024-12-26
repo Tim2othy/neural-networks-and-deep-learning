@@ -11,4 +11,4 @@ net = network.Network([784, 46, 24, 10])
 net.SGD(training_data, 5, 8, 3.0, test_data=test_data)
 
 
-print("end of starting")
+print("end of start")
