@@ -6,12 +6,18 @@ import network
 
 training_data, validation_data, test_data = mnist_loader2.load_data_wrapper()
 
-net = network.Network([784, 12, 10])
-# net = network2.Network([784, 30, 10], cost=network2.CrossEntropyCost)
+net = network2.Network([784, 30, 10], cost=network2.CrossEntropyCost)
 
-# net.large_weight_initializer()
+net.large_weight_initializer()
 
-net.SGD(training_data, 1, 8, 3.0, test_data=test_data)
+net.SGD(
+    training_data,
+    3,
+    8,
+    3.0,
+    evaluation_data=test_data,
+    monitor_evaluation_accuracy=True,
+)
 
 
-print("end of start")
+print("end of start2")
