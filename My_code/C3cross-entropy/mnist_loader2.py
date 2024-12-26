@@ -1,89 +1,58 @@
-"""
-mnist_loader
-~~~~~~~~~~~~
+# mnist_loader.py
 
-A library to load the MNIST image data.  For details of the data
-structures that are returned, see the doc strings for ``load_data``
-and ``load_data_wrapper``.  In practice, ``load_data_wrapper`` is the
-function usually called by our neural network code.
-"""
-
-#### Libraries
-# Standard library
-import pickle
-import gzip
-
-# Third-party libraries
+from tensorflow import keras
 import numpy as np
 
-def load_data():
-    """Return the MNIST data as a tuple containing the training data,
-    the validation data, and the test data.
-
-
-print(load_data_wrapper()[0])
-    The ``training_data`` is returned as a tuple with two entries.
-    The first entry contains the actual training images.  This is a
-    numpy ndarray with 50,000 entries.  Each entry is, in turn, a
-    numpy ndarray with 784 values, representing the 28 * 28 = 784
-    pixels in a single MNIST image.
-
-    The second entry in the ``training_data`` tuple is a numpy ndarray
-    containing 50,000 entries.  Those entries are just the digit
-    values (0...9) for the corresponding images contained in the first
-    entry of the tuple.
-
-    The ``validation_data`` and ``test_data`` are similar, except
-    each contains only 10,000 images.
-
-    This is a nice data format, but for use in neural networks it's
-    helpful to modify the format of the ``training_data`` a little.
-    That's done in the wrapper function ``load_data_wrapper()``, see
-    below.
-    """
-    f = gzip.open('../data/mnist.pkl.gz', 'rb')
-    u = pickle._Unpickler(f)
-    u.encoding = 'latin1'
-    training_data, validation_data, test_data = u.load()
-    f.close()
-    return (training_data, validation_data, test_data)
-
 def load_data_wrapper():
-    """Return a tuple containing ``(training_data, validation_data,
-    test_data)``. Based on ``load_data``, but the format is more
-    convenient for use in our implementation of neural networks.
+    try:
+        # Load the MNIST dataset
+        (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
 
-    In particular, ``training_data`` is a list containing 50,000
-    2-tuples ``(x, y)``.  ``x`` is a 784-dimensional numpy.ndarray
-    containing the input image.  ``y`` is a 10-dimensional
-    numpy.ndarray representing the unit vector corresponding to the
-    correct digit for ``x``.
+        # Check if the data is loaded correctly
+        if x_train.size == 0 or x_test.size == 0:
+            raise ValueError("Failed to load MNIST data")
 
-    ``validation_data`` and ``test_data`` are lists containing 10,000
-    2-tuples ``(x, y)``.  In each case, ``x`` is a 784-dimensional
-    numpy.ndarry containing the input image, and ``y`` is the
-    corresponding classification, i.e., the digit values (integers)
-    corresponding to ``x``.
+        # Normalize and reshape the data
+        x_train = x_train.reshape(x_train.shape[0], 784, 1).astype('float32') / 255
+        x_test = x_test.reshape(x_test.shape[0], 784, 1).astype('float32') / 255
 
-    Obviously, this means we're using slightly different formats for
-    the training data and the validation / test data.  These formats
-    turn out to be the most convenient for use in our neural network
-    code."""
-    tr_d, va_d, te_d = load_data()
-    training_inputs = [np.reshape(x, (784, 1)) for x in tr_d[0]]
-    training_results = [vectorized_result(y) for y in tr_d[1]]
-    training_data = list(zip(training_inputs, training_results))
-    validation_inputs = [np.reshape(x, (784, 1)) for x in va_d[0]]
-    validation_data = list(zip(validation_inputs, va_d[1]))
-    test_inputs = [np.reshape(x, (784, 1)) for x in te_d[0]]
-    test_data = list(zip(test_inputs, te_d[1]))
-    return (training_data, validation_data, test_data)
+        # Prepare the labels
+        def vectorized_result(j):
+            e = np.zeros((10, 1))
+            e[j] = 1.0
+            return e
 
-def vectorized_result(j):
-    """Return a 10-dimensional unit vector with a 1.0 in the jth
-    position and zeroes elsewhere.  This is used to convert a digit
-    (0...9) into a corresponding desired output from the neural
-    network."""
-    e = np.zeros((10, 1))
-    e[j] = 1.0
-    return e
+        y_train = [vectorized_result(y) for y in y_train]
+        
+        # Split test data into validation and test sets
+        n_validation = 5000
+        x_validation, x_test = x_test[:n_validation], x_test[n_validation:]
+        y_validation, y_test = y_test[:n_validation], y_test[n_validation:]
+
+        # Create the data tuples
+        training_data = list(zip(x_train, y_train))
+        validation_data = list(zip(x_validation, y_validation))
+        test_data = list(zip(x_test, y_test))
+
+        return (training_data, validation_data, test_data)
+
+    except Exception as e:
+        print(f"Error in load_data_wrapper: {e}")
+        print(f"x_train shape: {x_train.shape if 'x_train' in locals() else 'Not loaded'}")
+        print(f"x_test shape: {x_test.shape if 'x_test' in locals() else 'Not loaded'}")
+        raise
+
+# Add this at the end of the file to test the loader
+if __name__ == "__main__":
+    try:
+        training_data, validation_data, test_data = load_data_wrapper()
+        print("Data loaded successfully")
+        print(f"Training data size: {len(training_data)}")
+        print(f"Validation data size: {len(validation_data)}")
+        print(f"Test data size: {len(test_data)}")
+    except Exception as e:
+        print(f"Failed to load data: {e}")
+
+
+
+print('end of loader')
