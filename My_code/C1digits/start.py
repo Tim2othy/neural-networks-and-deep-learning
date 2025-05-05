@@ -1,18 +1,10 @@
 # starting_ch1.py
-
-import mnist_loader
+from mnist_loader import load_data_wrapper
 import network
 
-training_data, validation_data, test_data = mnist_loader.load_data_wrapper()
+# Get data directly from the wrapper
+training_data, validation_data, test_data = load_data_wrapper()
 
 net = network.Network([784, 32, 10])
 
-net.SGD(
-    training_data,
-    1,
-    8,
-    3.0,
-    test_data=test_data
-)
-
-print("end of start")
+net.SGD(training_data, 5, 8, 3.0, test_data=test_data)
