@@ -40,7 +40,7 @@ def linear(z):
 
 
 def ReLU(z):
-    return T.maximum(0.0, z)
+    return max(0.0, z)
 
 
 #### Main class used to construct and train networks
@@ -54,8 +54,8 @@ class Network(object):
         self.layers = layers
         self.mini_batch_size = mini_batch_size
         self.params = [param for layer in self.layers for param in layer.params]
-        self.x = T.matrix("x")
-        self.y = T.ivector("y")
+        self.x = torch.empty((mini_batch_size, layers[0].n_in), dtype=torch.float32)
+        self.y = torch.empty(mini_batch_size, dtype=torch.long)
         init_layer = self.layers[0]
         init_layer.set_inpt(self.x, self.x, self.mini_batch_size)
         for j in range(1, len(self.layers)):
@@ -161,7 +161,7 @@ class Network(object):
                     print("Training mini-batch number {0}".format(iteration))
                 cost_ij = train_mb(minibatch_index)
                 if (iteration + 1) % num_training_batches == 0:
-                    validation_accuracy = np.mean(
+                    validation_accuracy = torch.mean(
                         [validate_mb_accuracy(j) for j in range(num_validation_batches)]
                     )
                     print(
@@ -222,14 +222,8 @@ class ConvPoolLayer(object):
         self.activation_fn = activation_fn
         # initialize weights and biases
         n_out = filter_shape[0] * np.prod(filter_shape[2:]) / np.prod(poolsize)
-        self.w = torch.shared(
-            np.asarray(
-                np.random.normal(loc=0, scale=np.sqrt(1.0 / n_out), size=filter_shape),
-                dtype=torch.config.floatX,
-            ),
-            borrow=True,
-        )
-        self.b = torch.shared(
+        self.w = torch.randn(filter_shape)
+        self.b = (
             np.asarray(
                 np.random.normal(loc=0, scale=1.0, size=(filter_shape[0],)),
                 dtype=torch.config.floatX,
@@ -256,13 +250,13 @@ class ConvPoolLayer(object):
 class FullyConnectedLayer(nn.Module):
     """Standard fully connected layer with optional dropout"""
 
-    def __init__(self, n_in, n_out, activation_fn=sigmoid, p_dropout=0.0):
+    def __init__(self, n_in, n_out, activation_fn=ReLU, p_dropout=0.0):
         self.n_in = n_in
         self.n_out = n_out
         self.activation_fn = activation_fn
         self.p_dropout = p_dropout
         # Initialize weights and biases
-        self.w = torch.shared(
+        self.w = (
             np.asarray(
                 np.random.normal(
                     loc=0.0, scale=np.sqrt(1.0 / n_out), size=(n_in, n_out)
@@ -272,7 +266,7 @@ class FullyConnectedLayer(nn.Module):
             name="w",
             borrow=True,
         )
-        self.b = torch.shared(
+        self.b = (
             np.asarray(
                 np.random.normal(loc=0.0, scale=1.0, size=(n_out,)),
                 dtype=torch.config.floatX,
@@ -308,10 +302,10 @@ class SoftmaxLayer(object):
         self.n_out = n_out
         self.p_dropout = p_dropout
         # Initialize weights and biases
-        self.w = torch.shared(
+        self.w = (
             np.zeros((n_in, n_out), dtype=torch.config.floatX), name="w", borrow=True
         )
-        self.b = torch.shared(
+        self.b = (
             np.zeros((n_out,), dtype=torch.config.floatX), name="b", borrow=True
         )
         self.params = [self.w, self.b]
