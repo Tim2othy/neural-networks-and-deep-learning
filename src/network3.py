@@ -4,16 +4,14 @@ Got the code from https://github.com/MichalDanielDobrzanski/DeepLearningPython/p
 
 import numpy as np
 import torch
-import torch.tensor as T
-from torch.tensor import shared_randomstreams
-
-# Activation functions for neurons
-from torch.tensor.nnet import conv, sigmoid, softmax
-from torch.tensor.signal.pool import pool_2d
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
 
 """network3.py
 ~~~~~~~~~~~~~~
-A torch-based program for training and running simple neural
+A PyTorch-based program for training and running simple neural
 networks.
 Supports several layer types (fully connected, convolutional, max
 pooling, softmax), and activation functions (sigmoid, tanh, and
@@ -34,12 +32,6 @@ implementation of dropout (https://github.com/mdenil/dropout ), and
 from Chris Olah (http://colah.github.io ).
 """
 
-#### Libraries
-# Standard library
-
-# Third-party libraries
-
-
 #### Constants
 
 
@@ -49,9 +41,6 @@ def linear(z):
 
 def ReLU(z):
     return T.maximum(0.0, z)
-
-
-GPU = False
 
 
 #### Main class used to construct and train networks
@@ -76,6 +65,12 @@ class Network(object):
             )
         self.output = self.layers[-1].output
         self.output_dropout = self.layers[-1].output_dropout
+
+    def forward(self, x):
+        """Forward pass through the network"""
+        for layer in self.layers:
+            x = layer(x)
+        return x
 
     def SGD(
         self,
@@ -170,28 +165,31 @@ class Network(object):
                         [validate_mb_accuracy(j) for j in range(num_validation_batches)]
                     )
                     print(
-                        "Epoch {0}: validation accuracy {1:.2%}".format(
-                            epoch, validation_accuracy
-                        )
+                        f"Epoch {epoch}: validation accuracy {validation_accuracy:.2%}"
                     )
-                    if validation_accuracy >= best_validation_accuracy:
+
+                    if validation_accuracy > best_validation_accuracy:
                         print("This is the best validation accuracy to date.")
                         best_validation_accuracy = validation_accuracy
                         best_iteration = iteration
-                        if test_data:
-                            test_accuracy = np.mean(
-                                [test_mb_accuracy(j) for j in range(num_test_batches)]
-                            )
-                            print(
-                                "The corresponding test accuracy is {0:.2%}".format(
-                                    test_accuracy
-                                )
-                            )
+
+                        # Test accuracy
+                        correct = 0
+                        total = 0
+
+                        with torch.no_grad():
+                            for test_data, test_target in test_loader:
+                                test_output = self(test_data)
+                                _, predicted = torch.max(test_output.data, 1)
+                                total += test_target.size(0)
+                                correct += (predicted == test_target).sum().item()
+
+                        test_accuracy = correct / total
+                        print(f"The corresponding test accuracy is {test_accuracy:.2%}")
+
         print("Finished training network.")
         print(
-            "Best validation accuracy of {0:.2%} obtained at iteration {1}".format(
-                best_validation_accuracy, best_iteration
-            )
+            f"Best validation accuracy of {best_validation_accuracy:.2%} obtained at iteration {best_iteration}"
         )
         print("Corresponding test accuracy of {0:.2%}".format(test_accuracy))
 
@@ -207,7 +205,7 @@ class ConvPoolLayer(object):
     """
 
     def __init__(
-        self, filter_shape, image_shape, poolsize=(2, 2), activation_fn=sigmoid
+        self, filter_shape, image_shape, poolsize=(2, 2), activation_fn=F.sigmoid
     ):
         """`filter_shape` is a tuple of length 4, whose entries are the number
         of filters, the number of input feature maps, the filter height, and the
@@ -255,7 +253,8 @@ class ConvPoolLayer(object):
         self.output_dropout = self.output  # no dropout in the convolutional layers
 
 
-class FullyConnectedLayer(object):
+class FullyConnectedLayer(nn.Module):
+    """Standard fully connected layer with optional dropout"""
 
     def __init__(self, n_in, n_out, activation_fn=sigmoid, p_dropout=0.0):
         self.n_in = n_in
@@ -304,6 +303,7 @@ class FullyConnectedLayer(object):
 class SoftmaxLayer(object):
 
     def __init__(self, n_in, n_out, p_dropout=0.0):
+        super(SoftmaxLayer, self).__init__()
         self.n_in = n_in
         self.n_out = n_out
         self.p_dropout = p_dropout
