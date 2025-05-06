@@ -14,9 +14,9 @@ features.
 #### Libraries
 # Standard library
 import random
+import torch as to
 
 # Third-party libraries
-import numpy as np
 
 #### Define the quadratic and cross-entropy cost functions
 
@@ -29,7 +29,7 @@ class QuadraticCost(object):
         ``y``.
 
         """
-        return 0.5 * np.linalg.norm(a - y) ** 2
+        return 0.5 * to.linalg.norm(a - y) ** 2
 
     @staticmethod
     def delta(z, a, y):
@@ -42,14 +42,14 @@ class CrossEntropyCost(object):
     @staticmethod
     def fn(a, y):
         """Return the cost associated with an output ``a`` and desired output
-        ``y``.  Note that np.nan_to_num is used to ensure numerical
+        ``y``.  Note that to.nan_to_num is used to ensure numerical
         stability.  In particular, if both ``a`` and ``y`` have a 1.0
-        in the same slot, then the expression (1-y)*np.log(1-a)
-        returns nan.  The np.nan_to_num ensures that that is converted
+        in the same slot, then the expression (1-y)*to.log(1-a)
+        returns nan.  The to.nan_to_num ensures that that is converted
         to the correct value (0.0).
 
         """
-        return np.sum(np.nan_to_num(-y * np.log(a) - (1 - y) * np.log(1 - a)))
+        return to.sum(to.nan_to_num(-y * to.log(a) - (1 - y) * to.log(1 - a)))
 
     @staticmethod
     def delta(z, a, y):
@@ -94,10 +94,9 @@ class Network(object):
         layers.
 
         """
-        self.biases = [np.random.randn(y, 1) for y in self.sizes[1:]]
+        self.biases = [to.randn(y, 1) for y in self.sizes[1:]]
         self.weights = [
-            np.random.randn(y, x) / np.sqrt(x)
-            for x, y in zip(self.sizes[:-1], self.sizes[1:])
+            to.randn(y, x) / x**0.5 for x, y in zip(self.sizes[:-1], self.sizes[1:])
         ]
 
     def large_weight_initializer(self):
@@ -116,15 +115,13 @@ class Network(object):
         instead.
 
         """
-        self.biases = [np.random.randn(y, 1) for y in self.sizes[1:]]
-        self.weights = [
-            np.random.randn(y, x) for x, y in zip(self.sizes[:-1], self.sizes[1:])
-        ]
+        self.biases = [to.randn(y, 1) for y in self.sizes[1:]]
+        self.weights = [to.randn(y, x) for x, y in zip(self.sizes[:-1], self.sizes[1:])]
 
     def feedforward(self, a):
         """Return the output of the network if ``a`` is input."""
         for b, w in zip(self.biases, self.weights):
-            a = sigmoid(np.dot(w, a) + b)
+            a = sigmoid(to.dot(w, a) + b)
         return a
 
     def SGD(
@@ -204,8 +201,8 @@ class Network(object):
         ``n`` is the total size of the training data set.
 
         """
-        nabla_b = [np.zeros(b.shape) for b in self.biases]
-        nabla_w = [np.zeros(w.shape) for w in self.weights]
+        nabla_b = [to.zeros(b.shape) for b in self.biases]
+        nabla_w = [to.zeros(w.shape) for w in self.weights]
         for x, y in mini_batch:
             delta_nabla_b, delta_nabla_w = self.backprop(x, y)
             nabla_b = [nb + dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
@@ -223,21 +220,21 @@ class Network(object):
         gradient for the cost function C_x.  ``nabla_b`` and
         ``nabla_w`` are layer-by-layer lists of numpy arrays, similar
         to ``self.biases`` and ``self.weights``."""
-        nabla_b = [np.zeros(b.shape) for b in self.biases]
-        nabla_w = [np.zeros(w.shape) for w in self.weights]
+        nabla_b = [to.zeros(b.shape) for b in self.biases]
+        nabla_w = [to.zeros(w.shape) for w in self.weights]
         # feedforward
         activation = x
         activations = [x]  # list to store all the activations, layer by layer
         zs = []  # list to store all the z vectors, layer by layer
         for b, w in zip(self.biases, self.weights):
-            z = np.dot(w, activation) + b
+            z = to.dot(w, activation) + b
             zs.append(z)
             activation = sigmoid(z)
             activations.append(activation)
         # backward pass
         delta = (self.cost).delta(zs[-1], activations[-1], y)
         nabla_b[-1] = delta
-        nabla_w[-1] = np.dot(delta, activations[-2].transpose())
+        nabla_w[-1] = to.dot(delta, activations[-2].transpose())
         # Note that the variable l in the loop below is used a little
         # differently to the notation in Chapter 2 of the book.  Here,
         # l = 1 means the last layer of neurons, l = 2 is the
@@ -247,9 +244,9 @@ class Network(object):
         for ll in range(2, self.num_layers):
             z = zs[-ll]
             sp = sigmoid_prime(z)
-            delta = np.dot(self.weights[-ll + 1].transpose(), delta) * sp
+            delta = to.matmul(self.weights[-ll + 1].T, delta) * sp
             nabla_b[-ll] = delta
-            nabla_w[-ll] = np.dot(delta, activations[-ll - 1].transpose())
+            nabla_w[-ll] = to.matmul(delta, activations[-ll - 1].T)
         return (nabla_b, nabla_w)
 
     def accuracy(self, data, convert=False):
@@ -277,11 +274,11 @@ class Network(object):
         """
         if convert:
             results = [
-                (np.argmax(self.feedforward(x)), np.argmax(y)) for (x, y) in data
+                (to.argmax(self.feedforward(x)), to.argmax(y)) for (x, y) in data
             ]
         else:
             # In this case, y is already a scalar index (not a one-hot vector)
-            results = [(np.argmax(self.feedforward(x)), int(y)) for (x, y) in data]
+            results = [(to.argmax(self.feedforward(x)), int(y)) for (x, y) in data]
 
         # Now we're comparing integers to integers
         return sum(1 for (x, y) in results if x == y)
@@ -302,7 +299,7 @@ class Network(object):
         cost += (
             0.5
             * (lmbda / len(data))
-            * sum(np.linalg.norm(w) ** 2 for w in self.weights)
+            * sum(to.linalg.norm(w) ** 2 for w in self.weights)
         )
         return cost
 
@@ -314,14 +311,14 @@ def vectorized_result(j):
     into a corresponding desired output from the neural network.
 
     """
-    e = np.zeros((10, 1))
+    e = to.zeros((10, 1))
     e[j] = 1.0
     return e
 
 
 def sigmoid(z):
     """The sigmoid function."""
-    return 1.0 / (1.0 + np.exp(-z))
+    return 1.0 / (1.0 + to.exp(-z))
 
 
 def sigmoid_prime(z):
