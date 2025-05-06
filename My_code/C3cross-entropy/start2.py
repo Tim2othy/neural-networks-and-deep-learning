@@ -1,4 +1,4 @@
-# starting_ch1.py
+# starting_ch2.py
 
 from mnist_loader import load_data_wrapper
 from network2 import CrossEntropyCost, Network
